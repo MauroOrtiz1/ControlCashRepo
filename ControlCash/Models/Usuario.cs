@@ -13,6 +13,8 @@ public partial class Usuario
 
     public string Password { get; set; } = null!;
 
+    public string Rol { get; set; } = "user"; 
+
     public bool? EsPremium { get; set; }
 
     public bool? AnunciosActivos { get; set; }
@@ -23,3 +25,4 @@ public partial class Usuario
 
     public virtual ICollection<Gasto> Gastos { get; set; } = new List<Gasto>();
 }
+

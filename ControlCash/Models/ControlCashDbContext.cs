@@ -121,7 +121,13 @@ public partial class ControlCashDbContext : DbContext
             entity.Property(e => e.Password)
                 .HasMaxLength(255)
                 .HasColumnName("password");
+
+            entity.Property(e => e.Rol)
+                .HasMaxLength(20)
+                .HasColumnName("rol")
+                .HasDefaultValue("user");  
         });
+
 
         OnModelCreatingPartial(modelBuilder);
     }
