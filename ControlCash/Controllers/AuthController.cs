@@ -7,6 +7,7 @@ using System.Security.Claims;
 using System.Text;
 using System.Text.RegularExpressions;
 using ControlCash.Models;
+using ControlCash.DTOs;
 
 [ApiController]
 [Route("api/[controller]")]
@@ -15,24 +16,28 @@ public class AuthController : ControllerBase
     private readonly ControlCashDbContext _context;
     private readonly IConfiguration _configuration;
     private readonly PasswordHasher<Usuario> _passwordHasher;
-
-    public AuthController(ControlCashDbContext context, IConfiguration configuration)
+    private readonly ILogger<AuthController> _logger; // Esto para LOGS
+    
+    public AuthController(ControlCashDbContext context, IConfiguration configuration, ILogger<AuthController> logger)
     {
         _context = context;
         _configuration = configuration;
         _passwordHasher = new PasswordHasher<Usuario>();
+        _logger = logger;
     }
 
     // POST api/auth/registrarse (registro público, solo rol user)
     [HttpPost("registrarse-usuarios")]
     public IActionResult RegistrarUsuario([FromBody] RegisterRequest register)
     {
-        if (_context.Usuarios.Any(u => u.Email == register.Email))
+        if (!ModelState.IsValid) {
+            _logger.LogWarning("Registro fallido: modelo inválido para email {Email}", register.Email);
+            return BadRequest(ModelState);
+        }
+        if (_context.Usuarios.Any(u => u.Email == register.Email)) {
+            _logger.LogWarning("Intento de registro con email ya existente: {Email}", register.Email);
             return BadRequest("El email ya está registrado.");
-
-        var regex = new Regex(@"^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[\W_]).{8,}$");
-        if (!regex.IsMatch(register.Password))
-            return BadRequest("La contraseña debe tener mínimo 8 caracteres, una mayúscula, un número y un carácter especial.");
+        }
 
         var newUser = new Usuario
         {
@@ -48,24 +53,25 @@ public class AuthController : ControllerBase
         _context.Usuarios.Add(newUser);
         _context.SaveChanges();
 
+        _logger.LogInformation("Usuario registrado exitosamente: {Email}", newUser.Email);
         return Ok("Usuario registrado correctamente.");
     }
+
 
     // POST api/auth/crear-usuario (solo admin puede crear usuarios con rol arbitrario)
     [Authorize(Roles = "admin")]
     [HttpPost("crear-usuario-admin")]
-    public IActionResult CrearUsuarioPorAdmin([FromBody] RegisterRequest register)
+    public IActionResult CrearUsuarioPorAdmin([FromBody] RegisterAdminRequest register)
     {
-        if (_context.Usuarios.Any(u => u.Email == register.Email))
+        if (!ModelState.IsValid) {
+            _logger.LogWarning("Creación de usuario por admin fallida: modelo inválido para email {Email}", register.Email);
+            return BadRequest(ModelState);
+        }
+
+        if (_context.Usuarios.Any(u => u.Email == register.Email)) {
+            _logger.LogWarning("Intento de creación de usuario con email ya existente por admin: {Email}", register.Email);
             return BadRequest("El email ya está registrado.");
-
-        var rolesPermitidos = new[] { "user", "admin" };
-        if (string.IsNullOrEmpty(register.Rol) || !rolesPermitidos.Contains(register.Rol.ToLower()))
-            return BadRequest("Rol inválido. Solo se permiten: user, admin.");
-
-        var regex = new Regex(@"^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[\W_]).{8,}$");
-        if (!regex.IsMatch(register.Password))
-            return BadRequest("La contraseña debe tener mínimo 8 caracteres, una mayúscula, un número y un carácter especial.");
+        }
 
         var newUser = new Usuario
         {
@@ -81,7 +87,8 @@ public class AuthController : ControllerBase
 
         _context.Usuarios.Add(newUser);
         _context.SaveChanges();
-
+        
+        _logger.LogInformation("Usuario creado por admin exitosamente: {Email} con rol {Rol}", newUser.Email, newUser.Rol);
         return Ok("Usuario creado correctamente.");
     }
 
@@ -92,12 +99,20 @@ public class AuthController : ControllerBase
     {
         var user = _context.Usuarios.Find(id);
 
-        if (user == null)
+        if (user == null) {
+            _logger.LogWarning("Intento de promover a admin usuario inexistente con Id {Id}", id);
             return NotFound("Usuario no encontrado.");
+        }
 
+        if (user.Rol == "admin") {
+            _logger.LogInformation("Intento de promover a admin un usuario que ya es admin: {Email}", user.Email);
+            return BadRequest("El usuario ya es administrador.");
+        }
+        
         user.Rol = "admin";
         _context.SaveChanges();
-
+        
+        _logger.LogInformation("Usuario {Email} promovido a administrador.", user.Email);
         return Ok($"Usuario {user.Email} promovido a administrador.");
     }
 
@@ -105,15 +120,27 @@ public class AuthController : ControllerBase
     [HttpPost("login")]
     public IActionResult Login([FromBody] LoginRequest login)
     {
+        if (!ModelState.IsValid)
+        {
+            _logger.LogWarning("Intento de login con modelo inválido para el email: {Email}", login.Email);
+            return BadRequest(ModelState); // FluentValidation
+        }
+
         var user = _context.Usuarios.SingleOrDefault(u => u.Email == login.Email);
 
         if (user == null)
+        {
+            _logger.LogWarning("Intento de login con email inexistente: {Email}", login.Email);
             return Unauthorized("Usuario o contraseña incorrectos");
+        }
 
         var verificationResult = _passwordHasher.VerifyHashedPassword(user, user.Password, login.Password);
 
         if (verificationResult == PasswordVerificationResult.Failed)
+        {
+            _logger.LogWarning("Intento de login fallido por contraseña incorrecta para email: {Email}", login.Email);
             return Unauthorized("Usuario o contraseña incorrectos");
+        }
 
         var claims = new[]
         {
@@ -131,6 +158,7 @@ public class AuthController : ControllerBase
             expires: DateTime.Now.AddMinutes(_configuration.GetValue<int>("JwtSettings:ExpiryMinutes")),
             signingCredentials: creds);
 
+        _logger.LogInformation("Login exitoso para el usuario: {Email}", user.Email);
         return Ok(new
         {
             token = new JwtSecurityTokenHandler().WriteToken(token)
@@ -192,18 +220,36 @@ public class AuthController : ControllerBase
 
         return Ok("Usuario eliminado correctamente.");
     }
+    
+    // NUEVOS ENDPOINTS
+    
+    // Cambiar password
+    public class CambiarPasswordRequest {
+        public string PasswordActual { get; set; }
+        public string NuevaPassword { get; set; }
+    }
+
+    [Authorize]
+    [HttpPut("cambiar-password")]
+    public IActionResult CambiarPassword([FromBody] CambiarPasswordRequest request)
+    {
+        var email = User.FindFirst(ClaimTypes.Email)?.Value;
+        var user = _context.Usuarios.FirstOrDefault(u => u.Email == email);
+
+        if (user == null)
+            return NotFound("Usuario no encontrado.");
+
+        var result = _passwordHasher.VerifyHashedPassword(user, user.Password, request.PasswordActual);
+        if (result == PasswordVerificationResult.Failed)
+            return BadRequest("La contraseña actual es incorrecta.");
+
+        user.Password = _passwordHasher.HashPassword(user, request.NuevaPassword);
+        _context.SaveChanges();
+
+        _logger.LogInformation("Usuario {Email} cambió su contraseña.", user.Email);
+        return Ok("Contraseña actualizada correctamente.");
+    }
+
+
 }
 
-public class LoginRequest
-{
-    public string Email { get; set; } = string.Empty;
-    public string Password { get; set; } = string.Empty;
-}
-
-public class RegisterRequest
-{
-    public string Nombre { get; set; } = string.Empty;
-    public string Email { get; set; } = string.Empty;
-    public string Password { get; set; } = string.Empty;
-    public string? Rol { get; set; }  
-}

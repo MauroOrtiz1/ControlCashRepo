@@ -1,9 +1,12 @@
 using Microsoft.EntityFrameworkCore;
 using ControlCash.Models;
+using ControlCash.Validators;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi.Models;
 using System.Text;
+using FluentValidation;
+using FluentValidation.AspNetCore;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -93,7 +96,11 @@ builder.Services.AddDbContext<ControlCashDbContext>(options =>
     options.UseNpgsql(builder.Configuration.GetConnectionString("DefaultConnection"))
 );
 
-builder.Services.AddControllers();
+builder.Services.AddControllers()
+    .AddFluentValidation(config =>
+    {
+        config.RegisterValidatorsFromAssemblyContaining<RegisterRequestValidator>();
+    });
 
 var app = builder.Build();
 
