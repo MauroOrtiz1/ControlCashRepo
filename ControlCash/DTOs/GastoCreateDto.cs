@@ -1,0 +1,9 @@
+﻿namespace ControlCash.DTOs
+{
+    public class GastoCreateDTO
+    {
+        public int IdCategoria { get; set; }
+        public decimal Monto { get; set; }
+        public string? Descripcion { get; set; }
+    }
+}

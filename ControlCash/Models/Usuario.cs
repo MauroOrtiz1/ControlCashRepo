@@ -24,5 +24,7 @@ public partial class Usuario
     public virtual ICollection<Exportacion> Exportacions { get; set; } = new List<Exportacion>();
 
     public virtual ICollection<Gasto> Gastos { get; set; } = new List<Gasto>();
+
+    public virtual ICollection<Categorium> Categorias { get; set; } = new List<Categorium>();
 }
 

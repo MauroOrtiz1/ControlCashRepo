@@ -36,10 +36,21 @@ public partial class ControlCashDbContext : DbContext
             entity.ToTable("categoria");
 
             entity.Property(e => e.IdCategoria).HasColumnName("id_categoria");
+
             entity.Property(e => e.NombreCategoria)
                 .HasMaxLength(100)
                 .HasColumnName("nombre_categoria");
+
+            entity.Property(e => e.IdUsuario).HasColumnName("id_usuario");
+
+            // ✅ Relación con Usuario
+            entity.HasOne<Usuario>(c => c.Usuario)
+                .WithMany(u => u.Categorias)
+                .HasForeignKey(c => c.IdUsuario)
+                .OnDelete(DeleteBehavior.Cascade)
+                .HasConstraintName("fk_usuario_categoria");
         });
+
 
         modelBuilder.Entity<Exportacion>(entity =>
         {
