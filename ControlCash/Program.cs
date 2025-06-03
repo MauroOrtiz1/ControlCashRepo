@@ -14,12 +14,26 @@ var builder = WebApplication.CreateBuilder(args);
 var jwtSettings = builder.Configuration.GetSection("JwtSettings");
 var secretKey = jwtSettings.GetValue<string>("SecretKey");
 
-// Agregar servicios de Swagger con configuración para JWT
+// CORS: permitir cualquier origen (para que React Native pueda acceder)
+builder.Services.AddCors(options =>
+{
+    options.AddPolicy("AllowAll", policy =>
+        policy.AllowAnyOrigin()
+              .AllowAnyMethod()
+              .AllowAnyHeader());
+});
+
+// Configurar Kestrel para escuchar desde cualquier IP (no solo localhost)
+builder.WebHost.ConfigureKestrel(options =>
+{
+    options.ListenAnyIP(5164); // Puerto expuesto por IP para que React Native lo detecte
+});
+
+// Swagger con configuración para JWT
 builder.Services.AddSwaggerGen(c =>
 {
     c.SwaggerDoc("v1", new OpenApiInfo { Title = "ControlCash API", Version = "v1" });
 
-    // Definir esquema de seguridad para JWT en Swagger
     c.AddSecurityDefinition("Bearer", new OpenApiSecurityScheme
     {
         Description = "Ingrese 'Bearer' seguido del token JWT",
@@ -32,8 +46,8 @@ builder.Services.AddSwaggerGen(c =>
     c.AddSecurityRequirement(new OpenApiSecurityRequirement
     {
         {
-            new OpenApiSecurityScheme 
-            { 
+            new OpenApiSecurityScheme
+            {
                 Reference = new OpenApiReference { Type = ReferenceType.SecurityScheme, Id = "Bearer" }
             },
             new string[] {}
@@ -41,7 +55,7 @@ builder.Services.AddSwaggerGen(c =>
     });
 });
 
-// Configurar autenticación JWT con manejo personalizado de errores
+// JWT Authentication
 builder.Services.AddAuthentication(options =>
 {
     options.DefaultAuthenticateScheme = JwtBearerDefaults.AuthenticationScheme;
@@ -91,11 +105,12 @@ builder.Services.AddAuthentication(options =>
 
 builder.Services.AddAuthorization();
 
-// Configurar DbContext
+// DbContext PostgreSQL
 builder.Services.AddDbContext<ControlCashDbContext>(options =>
     options.UseNpgsql(builder.Configuration.GetConnectionString("DefaultConnection"))
 );
 
+// FluentValidation
 builder.Services.AddControllers()
     .AddFluentValidation(config =>
     {
@@ -104,7 +119,7 @@ builder.Services.AddControllers()
 
 var app = builder.Build();
 
-// Middleware para desarrollo
+// Swagger solo en desarrollo
 if (app.Environment.IsDevelopment())
 {
     app.UseExceptionHandler("/Home/Error");
@@ -122,7 +137,9 @@ app.UseStaticFiles();
 
 app.UseRouting();
 
-app.UseAuthentication();  
+app.UseCors("AllowAll"); // 👈 IMPORTANTE para CORS
+
+app.UseAuthentication();
 app.UseAuthorization();
 
 app.MapControllers();

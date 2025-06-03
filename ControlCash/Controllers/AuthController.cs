@@ -165,25 +165,6 @@ public class AuthController : ControllerBase
         });
     }
     
-    
-    //pruebas 
-
-    // GET api/auth/admin-only
-    [Authorize(Roles = "admin")]
-    [HttpGet("solo-admin")]
-    public IActionResult SoloAdmin()
-    {
-        return Ok("Este endpoint solo es accesible por administradores.");
-    }
-
-    // GET api/auth/user-or-admin
-    [Authorize(Roles = "user,admin")]
-    [HttpGet("usuario-o-admin")]
-    public IActionResult UsuarioOAdmin()
-    {
-        return Ok("Este endpoint es accesible por usuarios y administradores.");
-    }
-
     // GET api/auth/usuarios
     [Authorize(Roles = "admin")]
     [HttpGet("usuarios")]
@@ -249,7 +230,7 @@ public class AuthController : ControllerBase
         _logger.LogInformation("Usuario {Email} cambió su contraseña.", user.Email);
         return Ok("Contraseña actualizada correctamente.");
     }
-
+    
 
 }
 
