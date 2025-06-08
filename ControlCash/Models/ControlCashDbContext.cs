@@ -59,10 +59,13 @@ public partial class ControlCashDbContext : DbContext
             entity.ToTable("exportacion");
 
             entity.Property(e => e.IdExportacion).HasColumnName("id_exportacion");
+
+            // Cambia el tipo a 'timestamp with time zone' en lugar de 'timestamp without time zone'
             entity.Property(e => e.FechaExportado)
                 .HasDefaultValueSql("CURRENT_TIMESTAMP")
-                .HasColumnType("timestamp without time zone")
+                .HasColumnType("timestamp with time zone") // Aquí es donde realizamos el cambio
                 .HasColumnName("fecha_exportado");
+
             entity.Property(e => e.IdUsuario).HasColumnName("id_usuario");
             entity.Property(e => e.OrigenGrafico)
                 .HasMaxLength(100)
@@ -71,10 +74,15 @@ public partial class ControlCashDbContext : DbContext
                 .HasMaxLength(10)
                 .HasColumnName("tipo_archivo");
 
+            // Agregar los nuevos campos de mes y año
+            entity.Property(e => e.MesExportado).HasColumnName("mes_exportado");
+            entity.Property(e => e.AnioExportado).HasColumnName("anio_exportado");
+
             entity.HasOne(d => d.IdUsuarioNavigation).WithMany(p => p.Exportacions)
                 .HasForeignKey(d => d.IdUsuario)
                 .HasConstraintName("fk_usuario_exportacion");
         });
+
 
         modelBuilder.Entity<Gasto>(entity =>
         {
@@ -142,6 +150,6 @@ public partial class ControlCashDbContext : DbContext
 
         OnModelCreatingPartial(modelBuilder);
     }
-
+    
     partial void OnModelCreatingPartial(ModelBuilder modelBuilder);
 }
