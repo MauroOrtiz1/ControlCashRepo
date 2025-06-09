@@ -32,11 +32,9 @@ namespace ControlCash.Controllers
 
                 var userId = int.Parse(userIdClaim.Value);
 
-                // Definir el rango de fechas para el reporte
                 var startDate = new DateTime(request.Anio, request.Mes, 1);
                 var endDate = startDate.AddMonths(1).AddDays(-1);
 
-                // Obtener los gastos del usuario para ese mes/año
                 var gastos = await _context.Gastos
                     .Where(g => g.IdUsuario == userId && g.Fecha.ToDateTime(TimeOnly.MinValue) >= startDate && g.Fecha.ToDateTime(TimeOnly.MinValue) <= endDate)
                     .Include(g => g.IdCategoriaNavigation)
@@ -49,85 +47,75 @@ namespace ControlCash.Controllers
                     return Ok(new { message = "No se encontraron gastos para el período seleccionado." });
                 }
 
-                // Asegurar que el directorio existe
-                var reportesDir = Path.Combine(Directory.GetCurrentDirectory(), "Reportes");
-                if (!Directory.Exists(reportesDir))
-                    Directory.CreateDirectory(reportesDir);
-
-                // Definir la ruta del archivo PDF
-                var pdfFilePath = Path.Combine(reportesDir, $"reporte_gastos_{request.Mes:D2}_{request.Anio}.pdf");
-
-                // Crear el documento PDF
-                using (var document = new PdfDocument())
+                using (var stream = new MemoryStream())
                 {
-                    var page = document.AddPage();
-                    page.Size = PdfSharpCore.PageSize.A4;
-                    var gfx = XGraphics.FromPdfPage(page);
+                    using (var document = new PdfDocument())
+                    {
+                        var page = document.AddPage();
+                        page.Size = PdfSharpCore.PageSize.A4;
+                        var gfx = XGraphics.FromPdfPage(page);
 
-                    // Configurar fuentes
-                    var titleFont = new XFont("Arial", 16, XFontStyle.Bold);
-                    var headerFont = new XFont("Arial", 12, XFontStyle.Bold);
-                    var subHeaderFont = new XFont("Arial", 10, XFontStyle.Bold);
-                    var regularFont = new XFont("Arial", 9, XFontStyle.Regular);
-                    var smallFont = new XFont("Arial", 8, XFontStyle.Regular);
+                        var titleFont = new XFont("Arial", 16, XFontStyle.Bold);
+                        var headerFont = new XFont("Arial", 12, XFontStyle.Bold);
+                        var subHeaderFont = new XFont("Arial", 10, XFontStyle.Bold);
+                        var regularFont = new XFont("Arial", 9, XFontStyle.Regular);
+                        var smallFont = new XFont("Arial", 8, XFontStyle.Regular);
 
-                    var currentY = 40.0;
-                    var leftMargin = 40.0;
-                    var rightMargin = page.Width - 40;
-                    var pageWidth = page.Width - 80;
+                        var currentY = 40.0;
+                        var leftMargin = 40.0;
+                        var rightMargin = page.Width - 40;
+                        var pageWidth = page.Width - 80;
 
-                    // Encabezado del documento
-                    DibujarEncabezado(gfx, titleFont, headerFont, regularFont, request, leftMargin, rightMargin, ref currentY);
+                        DibujarEncabezado(gfx, titleFont, headerFont, regularFont, request, leftMargin, rightMargin, ref currentY);
 
-                    // Resumen por categorías
-                    var gastosPorCategoria = gastos.GroupBy(g => g.IdCategoriaNavigation)
-                                                  .Select(g => new ResumenCategoria
-                                                  {
-                                                      Categoria = g.Key.NombreCategoria,
-                                                      Total = g.Sum(x => x.Monto),
-                                                      Cantidad = g.Count()
-                                                  })
-                                                  .OrderByDescending(x => x.Total)
-                                                  .ToList();
+                        var gastosPorCategoria = gastos.GroupBy(g => g.IdCategoriaNavigation)
+                            .Select(g => new ResumenCategoria
+                            {
+                                Categoria = g.Key.NombreCategoria,
+                                Total = g.Sum(x => x.Monto),
+                                Cantidad = g.Count()
+                            })
+                            .OrderByDescending(x => x.Total)
+                            .ToList();
 
-                    currentY += 20;
-                    DibujarResumenCategorias(gfx, subHeaderFont, regularFont, gastosPorCategoria, leftMargin, pageWidth, ref currentY);
+                        currentY += 20;
+                        DibujarResumenCategorias(gfx, subHeaderFont, regularFont, gastosPorCategoria, leftMargin, pageWidth, ref currentY);
+                        currentY += 30;
+                        DibujarGraficoBarras(gfx, gastosPorCategoria, leftMargin, pageWidth, ref currentY);
+                        currentY += 40;
+                        DibujarDetalleGastos(gfx, subHeaderFont, regularFont, smallFont, gastos, leftMargin, pageWidth, currentY, page);
+                        DibujarPiePagina(gfx, smallFont, page);
 
-                    // Gráfico de barras mejorado
-                    currentY += 30;
-                    DibujarGraficoBarras(gfx, gastosPorCategoria, leftMargin, pageWidth, ref currentY);
+                        document.Save(stream, false);
+                    }
 
-                    // Detalle de gastos por categoría
-                    currentY += 40;
-                    DibujarDetalleGastos(gfx, subHeaderFont, regularFont, smallFont, gastos, leftMargin, pageWidth, currentY, page);
+                    stream.Position = 0; // importante
 
-                    // Pie de página
-                    DibujarPiePagina(gfx, smallFont, page);
+                    var fileName = $"reporte_gastos_{request.Mes:D2}_{request.Anio}.pdf";
 
-                    document.Save(pdfFilePath);
+                    // Registrar exportación en la base de datos
+                    var exportacion = new Exportacion
+                    {
+                        IdUsuario = userId,
+                        TipoArchivo = "PDF",
+                        OrigenGrafico = "Reporte de Gastos por Categoría",
+                        FechaExportado = DateTime.UtcNow,
+                        MesExportado = request.Mes,
+                        AnioExportado = request.Anio
+                    };
+
+                    _context.Exportacions.Add(exportacion);
+                    await _context.SaveChangesAsync();
+
+                    return File(stream.ToArray(), "application/pdf", fileName);
                 }
-
-                // Registrar la exportación en la base de datos
-                var exportacion = new Exportacion
-                {
-                    IdUsuario = userId,
-                    TipoArchivo = "PDF",
-                    OrigenGrafico = "Reporte de Gastos por Categoría",
-                    FechaExportado = DateTime.UtcNow,
-                    MesExportado = request.Mes,
-                    AnioExportado = request.Anio
-                };
-
-                _context.Exportacions.Add(exportacion);
-                await _context.SaveChangesAsync();
-
-                return Ok(new { message = "PDF generado correctamente", filePath = pdfFilePath });
             }
             catch (Exception ex)
             {
                 return BadRequest($"Error al generar el reporte PDF: {ex.Message}");
             }
         }
+
 
         // Métodos auxiliares para dibujar el contenido en el PDF
         private void DibujarEncabezado(XGraphics gfx, XFont titleFont, XFont headerFont, XFont regularFont, 

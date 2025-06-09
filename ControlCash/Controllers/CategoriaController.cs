@@ -82,7 +82,7 @@ public class CategoriaController : ControllerBase
         return Ok("Categoría actualizada correctamente.");
     }
 
-    // DELETE api/categoria/{id}
+    // DELETE api/categoria/{id}  ESTE ELIMINA TANTO LA CATEGORIA COMO USS GASTOS RELACIONADOS
     [Authorize]
     [HttpDelete("{id}")]
     public IActionResult EliminarCategoria(int id)
@@ -92,20 +92,24 @@ public class CategoriaController : ControllerBase
             .Include(c => c.Gastos)
             .FirstOrDefault(c => c.IdCategoria == id && c.IdUsuario == idUsuario);
 
-        if (categoria == null) {
+        if (categoria == null)
+        {
             _logger.LogWarning("Intento de eliminar categoría no encontrada. ID: {Id}", id);
             return NotFound("Categoría no encontrada.");
         }
 
-        if (categoria.Gastos.Any()) {  // No se puede eliminar si tiene gastos (relaciones activas).
-            _logger.LogWarning("Intento de eliminar categoría con gastos asociados. ID: {Id}", id);
-            return BadRequest("No se puede eliminar una categoría que tiene gastos asociados.");
+        // Eliminar los gastos asociados
+        if (categoria.Gastos.Any())
+        {
+            _logger.LogInformation("Eliminando gastos asociados a la categoría ID: {Id}", id);
+            _context.Gastos.RemoveRange(categoria.Gastos);
         }
 
         _context.Categoria.Remove(categoria);
         _context.SaveChanges();
 
-        _logger.LogInformation("Categoría eliminada correctamente. ID: {Id}", id);
-        return Ok("Categoría eliminada correctamente.");
+        _logger.LogInformation("Categoría y gastos asociados eliminados correctamente. ID: {Id}", id);
+        return Ok("Categoría y sus gastos asociados eliminados correctamente.");
     }
+
 }
