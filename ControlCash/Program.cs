@@ -120,17 +120,15 @@ builder.Services.AddControllers()
 var app = builder.Build();
 
 // Swagger solo en desarrollo
-if (app.Environment.IsDevelopment())
-{
-    app.UseExceptionHandler("/Home/Error");
+app.UseExceptionHandler("/Home/Error");
 
-    app.UseSwagger();
-    app.UseSwaggerUI(c =>
-    {
-        c.SwaggerEndpoint("/swagger/v1/swagger.json", "ControlCash API V1");
-        c.RoutePrefix = string.Empty;
-    });
-}
+app.UseSwagger();
+app.UseSwaggerUI(c =>
+{
+    c.SwaggerEndpoint("/swagger/v1/swagger.json", "ControlCash API V1");
+    c.RoutePrefix = string.Empty;
+});
+
 
 app.UseHttpsRedirection();
 app.UseStaticFiles();
