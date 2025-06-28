@@ -1,4 +1,5 @@
-﻿using Microsoft.AspNetCore.Authorization;
+﻿/*
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Logging;
 using ControlCash.Models;
@@ -21,7 +22,7 @@ public class CategoriaController : ControllerBase
 
     // GET api/categoria // Obtener todas las categorías del usuario autentificado
     [Authorize]
-    [HttpGet]
+    [HttpGet]   
     public IActionResult ObtenerCategorias()
     {
         var idUsuario = int.Parse(User.FindFirst(ClaimTypes.NameIdentifier)?.Value!);
@@ -113,3 +114,4 @@ public class CategoriaController : ControllerBase
     }
 
 }
+*/

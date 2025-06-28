@@ -1,4 +1,5 @@
-﻿using ControlCash.Models;
+﻿/*
+using ControlCash.Models;
 using PdfSharpCore.Pdf;
 using PdfSharpCore.Drawing;
 using System.IO;
@@ -352,3 +353,4 @@ namespace ControlCash.Controllers
         public int Cantidad { get; set; }
     }
 }
+*/

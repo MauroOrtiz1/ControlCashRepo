@@ -1,4 +1,5 @@
-﻿using Microsoft.AspNetCore.Authorization;
+﻿/*
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using ControlCash.Models;
 using ControlCash.DTOs;
@@ -96,3 +97,4 @@ public class GastosController : ControllerBase
         return Ok("Gasto eliminado correctamente.");
     }
 }
+*/
