@@ -9,4 +9,10 @@ public class CurrentUserService : ICurrentUserService
     {
         return user.FindFirst(ClaimTypes.Email)?.Value ?? throw new Exception("No se pudo obtener el email del usuario.");
     }
+    public int ObtenerId(ClaimsPrincipal user)
+    {
+        var idClaim = user.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+        return int.TryParse(idClaim, out var id) ? id : throw new Exception("ID de usuario inválido.");
+    }
+
 }

@@ -1,6 +1,16 @@
-﻿namespace ControlCash.Domain.Interfaces.UnitOfWork;
+﻿using System.Threading.Tasks;
+using ControlCash.Domain.Interfaces.Repositories;
 
-public interface IUnitOfWork
+namespace ControlCash.Domain.Interfaces.UnitOfWork
 {
-    Task CommitAsync();
+    public interface IUnitOfWork
+    {
+        IUsuarioRepository UsuarioRepository { get; }
+        IGastoRepository GastoRepository { get; }
+        ICategoriaRepository CategoriaRepository { get; }
+
+
+        Task CommitAsync();
+        Task GuardarCambiosAsync(); 
+    }
 }

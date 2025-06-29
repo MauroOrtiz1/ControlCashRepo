@@ -1,28 +1,25 @@
-﻿using ControlCash.Domain.Interfaces.Repositories;
-using ControlCash.Domain.Interfaces.UnitOfWork;
+﻿using ControlCash.Domain.Interfaces.UnitOfWork;
 using Microsoft.Extensions.Logging;
+using ControlCash.Application.Common;
 
 namespace ControlCash.Application.UseCases.Auth;
 
 public class PromoverUsuarioAAdminUseCase
 {
-    private readonly IUsuarioRepository _usuarioRepository;
     private readonly IUnitOfWork _unitOfWork;
     private readonly ILogger<PromoverUsuarioAAdminUseCase> _logger;
 
     public PromoverUsuarioAAdminUseCase(
-        IUsuarioRepository usuarioRepository,
         IUnitOfWork unitOfWork,
         ILogger<PromoverUsuarioAAdminUseCase> logger)
     {
-        _usuarioRepository = usuarioRepository;
         _unitOfWork = unitOfWork;
         _logger = logger;
     }
 
     public async Task<ResultadoOperacion> EjecutarAsync(int id)
     {
-        var user = await _usuarioRepository.ObtenerPorIdAsync(id);
+        var user = await _unitOfWork.UsuarioRepository.ObtenerPorIdAsync(id);
         if (user is null) return ResultadoOperacion.CrearFalla("Usuario no encontrado.");
         if (user.Rol == "admin") return ResultadoOperacion.CrearFalla("El usuario ya es administrador.");
 

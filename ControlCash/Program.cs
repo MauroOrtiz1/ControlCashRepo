@@ -10,6 +10,9 @@ using ControlCash.Domain.Interfaces.Services;
 using ControlCash.Domain.Interfaces.UnitOfWork;
 using ControlCash.Infrastructure.Persistence;
 using ControlCash.Application.UseCases.Auth;
+using ControlCash.Application.UseCases.Categoria;
+using ControlCash.Application.UseCases.Exportacion;
+using ControlCash.Application.UseCases.Gasto;
 using ControlCash.Infrastructure.Services;
 using ControlCash.Application.Validators;
 
@@ -79,6 +82,17 @@ builder.Services.AddScoped<PromoverUsuarioAAdminUseCase>();
 builder.Services.AddScoped<ObtenerTodosUsuariosUseCase>();
 builder.Services.AddScoped<EliminarUsuarioUseCase>();
 builder.Services.AddScoped<CambiarPasswordUseCase>();
+builder.Services.AddScoped<CrearGastoUseCase>();
+builder.Services.AddScoped<ObtenerGastosUseCase>();
+builder.Services.AddScoped<EliminarGastoUseCase>();
+builder.Services.AddHttpContextAccessor();
+builder.Services.AddScoped<IUserContextService, UserContextService>();
+builder.Services.AddScoped<CrearCategoriaUseCase>();
+builder.Services.AddScoped<EliminarCategoriaUseCase>();
+builder.Services.AddScoped<ActualizarCategoriaUseCase>();
+builder.Services.AddScoped<ObtenerCategoriasUseCase>();
+builder.Services.AddScoped<GenerarReportePdfUseCase>();
+builder.Services.AddScoped<IPdfExportService, PdfExportService>();
 
 // JWT Authentication
 builder.Services.AddAuthentication(options =>

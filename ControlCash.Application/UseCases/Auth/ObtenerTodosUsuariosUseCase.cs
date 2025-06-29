@@ -1,19 +1,19 @@
-﻿using ControlCash.Domain.Interfaces.Repositories;
+﻿using ControlCash.Domain.Interfaces.UnitOfWork;
 
 namespace ControlCash.Application.UseCases.Auth;
 
 public class ObtenerTodosUsuariosUseCase
 {
-    private readonly IUsuarioRepository _usuarioRepository;
+    private readonly IUnitOfWork _unitOfWork;
 
-    public ObtenerTodosUsuariosUseCase(IUsuarioRepository usuarioRepository)
+    public ObtenerTodosUsuariosUseCase(IUnitOfWork unitOfWork)
     {
-        _usuarioRepository = usuarioRepository;
+        _unitOfWork = unitOfWork;
     }
 
     public async Task<object> EjecutarAsync()
     {
-        var lista = await _usuarioRepository.ObtenerTodosAsync();
+        var lista = await _unitOfWork.UsuarioRepository.ObtenerTodosAsync();
         return lista.Select(u => new
         {
             u.IdUsuario,
